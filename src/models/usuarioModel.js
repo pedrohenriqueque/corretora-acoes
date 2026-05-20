@@ -28,6 +28,13 @@ const UsuarioModel = {
     const [rows] = await db.execute(query, [id_usuario]);
     return rows[0];
   },
+
+  atualizarTentativas: async(id_usuario, tentativas_login_erradas, data_desbloqueio) =>{
+    const query = 'UPDATE Usuario SET tentativas_login_erradas = ?, data_desbloqueio = ? WHERE id_usuario = ?';
+    await db.execute(query, [tentativas_login_erradas, data_desbloqueio, id_usuario])
+    return true;
+  }
+
 };
 
 module.exports = UsuarioModel;
