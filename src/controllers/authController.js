@@ -7,21 +7,44 @@ const authController = {
   register: async (req, res) => {
     const { nome, email, senha } = req.body;
 
+    const errors = [];
+
     if (!nome || !email || !senha) {
-      return res.status(400).json({ error: 'Nome, e-mail e senha são obrigatórios.' });
+      errors.push("Nome, e-mail e senha são obrigatórios");
+    }
+
+    nomeLimpo = nome.trim();
+    emailLimpo = email.toLowerCase().trim();
+
+    if(nomeLimpo.length < 2 || nomeLimpo.length >100){
+      errors.push("Quantidade de caracteres inválida para o nome do usuário");
+    }
+
+    const usuario = await UsuarioModel.buscarPorEmail(email);
+
+    if (usuario) {
+      errors.push("Este e-mail já está cadastrado");
+    }
+
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+
+    if (senha.length < 8 || !regex.test(senha)){
+      errors.push("Senha precisa de no mínimo 8 caracteres, contendo pelo menos uma letra maiúscula, uma minúscula e um número");
+    }
+
+    if(errors.length > 0){
+      return res.status(400).json({errors});
     }
 
     try {
       const salt = await bcrypt.genSalt(10);
       const senhaCriptografada = await bcrypt.hash(senha, salt);
 
-      await UsuarioModel.criar(nome, email, senhaCriptografada);
+      await UsuarioModel.criar(nomeLimpo, emailLimpo, senhaCriptografada);
 
       return res.status(201).json({ message: 'Usuário cadastrado com sucesso!' });
     } catch (error) {
-      if (error.code === 'ER_DUP_ENTRY') {
-        return res.status(400).json({ error: 'Este e-mail já está cadastrado.' });
-      }
+      
       console.error(error);
       return res.status(500).json({ error: 'Erro interno ao cadastrar usuário.' });
     }
@@ -29,7 +52,7 @@ const authController = {
 
   // Lógica de Login (Requisito #1)
   login: async (req, res) => {
-    const { email, senha } = req.body;
+    const { email, senha} = req.body;
 
     if (!email || !senha) {
       return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
@@ -39,15 +62,41 @@ const authController = {
       // Usa o Model para buscar o usuário
       const usuario = await UsuarioModel.buscarPorEmail(email);
 
+
       if (!usuario) {
         return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
       }
 
+      if(usuario.data_desbloqueio && new Date() < usuario.data_desbloqueio){
+        return res.status(403).json({error: 'Acesso temporariamente bloqueado: Não é possível realizar login'})
+      }
+
+      if(usuario.data_desbloqueio && new Date() > usuario.data_desbloqueio){
+        usuario.data_desbloqueio = null;
+        usuario.tentativas_login_erradas = 0;
+        await UsuarioModel.atualizarTentativas(usuario.id_usuario, 0, null);
+
+      }
+      
       const senhaValida = await bcrypt.compare(senha, usuario.senha);
       
       if (!senhaValida) {
+        usuario.tentativas_login_erradas +=1;
+
+        await UsuarioModel.atualizarTentativas(usuario.id_usuario, usuario.tentativas_login_erradas, usuario.data_desbloqueio);
+   
+        if(usuario.tentativas_login_erradas >= 3){
+          usuario.data_desbloqueio = new Date(Date.now() + 2 * 60 *1000);
+          await UsuarioModel.atualizarTentativas(usuario.id_usuario, usuario.tentativas_login_erradas, usuario.data_desbloqueio);
+          return res.status(403).json({error: 'Acesso temporariamente bloqueado: Não é possível realizar login'})
+
+        }
+
+
         return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
       }
+
+      
 
       // Gera o Token JWT
       const token = jwt.sign(
