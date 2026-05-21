@@ -2,7 +2,7 @@
 const axios = require('axios');
 
 const mercadoService = {
-  
+
   obterPrecosFechamento: async () => {
     const res = await axios.get('https://raw.githubusercontent.com/marciobarros/dsw-simulador-corretora/refs/heads/main/tickers.json');
     return res.data;

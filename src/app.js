@@ -2,6 +2,7 @@ const express = require('express');
 const authController = require('./controllers/authController');
 const protegerRota = require('./middleware/authMiddleware');
 const mercadoRoutes = require('./routes/mercadoRoutes');
+const mercadoController = require('./controllers/mercadoController');
 
 const app = express();
 app.use(express.json());

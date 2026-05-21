@@ -1,5 +1,6 @@
 // src/controllers/mercadoController.js
 const db = require('../config/database');
+const UsuarioModel = require('../models/usuarioModel.js');
 const mercadoService = require('../services/mercadoService.js'); // Importa o service
 
 // O estado do tempo global continua aqui na memória do Node.js
@@ -133,7 +134,36 @@ const mercadoController = {
       return res.status(500).json({ error: 'Erro ao remover ação de interesse.' });
     }
   },
+
+  listarAcoesDisponiveis: async (req, res) => {
+    try{
+        const idUsuario = req.usuarioId;
+
+        const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [idUsuario]);
+        const minhasAcoes = linhasFavoritas.map(linha => linha.cod_acao);
+
+        const todasAcoes = await mercadoService.obterPrecosFechamento();
+
+        const acoesDisponiveis = todasAcoes
+        .filter(acaoMercado => !minhasAcoes.includes(acaoMercado.ticker))
+        .map(acaoMercado => ({
+          codigo: acaoMercado.ticker,
+          fechamento: acaoMercado.fechamento
+        }));
+
+
+        return res.status(200).json(acoesDisponiveis);          
+
+
+    }catch(error){
+       return res.status(500).json({error: 'Erro ao tenta listar ações que não estão na lista inicial do usuário' });
+    }
+      
+
+  }
 };
+
+
 
 mercadoController.resetMinutoSistema = () => {
   minutoSistemaGlobal = 0;
