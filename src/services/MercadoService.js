@@ -33,6 +33,17 @@ const mercadoService = {
     }).filter(Boolean);
   },
 
+  retornarPrecoAtualAcao: async (codigo, minuto) => {
+      precosMinuto = await mercadoService.obterPrecosMinuto(minuto);
+
+      const acao = precosMinuto.find(c => c.ticker === codigo);
+      if (!acao) return null;
+
+      const precoAtual = acao.preco;
+
+      return precoAtual;
+  }
+
 };
 
 module.exports = mercadoService;

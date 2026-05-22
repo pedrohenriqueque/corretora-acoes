@@ -1,13 +1,15 @@
 const express = require('express');
-const authController = require('./controllers/authController');
+const authController = require('./controllers/AuthController');
 const protegerRota = require('./middleware/authMiddleware');
 const mercadoRoutes = require('./routes/mercadoRoutes');
-const mercadoController = require('./controllers/mercadoController');
+const ordemRoutes = require('./routes/ordemRoutes');
+const mercadoController = require('./controllers/MercadoController');
 
 const app = express();
 app.use(express.json());
 
 app.use('/mercado', mercadoRoutes);
+app.use('/ordem', ordemRoutes);
 
 app.post('/auth/register', authController.register);
 app.post('/auth/login', authController.login);

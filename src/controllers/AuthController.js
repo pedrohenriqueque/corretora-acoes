@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const UsuarioModel = require('../models/usuarioModel');
+const UsuarioModel = require('../models/UsuarioModel');
+const ContaCorrenteModel = require('../models/ContaCorrenteModel');
+const CarteiraModel = require('../models/CarteiraModel');
 
 const authController = {
   // Lógica de Cadastro
@@ -17,9 +19,16 @@ const authController = {
 
       const idUsuario = await UsuarioModel.criar(nome, email, senhaCriptografada);
 
+      await ContaCorrenteModel.criarConta(idUsuario, 50000000.00);
+
+      await CarteiraModel.criarCarteira(idUsuario);
+
+
+
       const todasAcoes = await UsuarioModel.listarTodasAcoes();
       const acoesIniciais = UsuarioModel.sortearAcoes(todasAcoes, 10);
       await UsuarioModel.adicionarAcoesFavoritas(idUsuario, acoesIniciais);
+
 
       return res.status(201).json({
         message: 'Usuário cadastrado com sucesso!',

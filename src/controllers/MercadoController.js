@@ -1,7 +1,8 @@
 // src/controllers/mercadoController.js
-const db = require('../config/database');
-const UsuarioModel = require('../models/usuarioModel.js');
-const mercadoService = require('../services/mercadoService.js'); // Importa o service
+const db = require('../config/database.js');
+const UsuarioModel = require('../models/UsuarioModel.js');
+const OrdemService = require('../services/OrdemService.js');
+const MercadoService = require('../services/MercadoService.js'); // Importa o service
 
 // O estado do tempo global continua aqui na memória do Node.js
 let minutoSistemaGlobal = 0; 
@@ -22,7 +23,7 @@ const mercadoController = {
       }
 
       // Usa o service para buscar o fechamento
-      const precosFechamento = await mercadoService.obterPrecosFechamento();
+      const precosFechamento = await MercadoService.obterPrecosFechamento();
       let dadosMercadoFinais = [];
 
       for (let i = 1; i <= inc; i++) {
@@ -35,12 +36,18 @@ const mercadoController = {
 
         try {
           // Coleta os preços e faz o mapeamento usando o Service
-          const precosMinuto = await mercadoService.obterPrecosMinuto(minutoSistemaGlobal);
-          const dadosMercado = mercadoService.mapearPrecosComVariacao(precosMinuto, precosFechamento);
+          const precosMinuto = await MercadoService.obterPrecosMinuto(minutoSistemaGlobal);
+
+
+          const dadosMercado = MercadoService.mapearPrecosComVariacao(precosMinuto, precosFechamento);
 
           if (i === inc || minutoSistemaGlobal === 59) {
             dadosMercadoFinais = dadosMercado;
           }
+
+          await OrdemService.processarOrdensPendentes(precosMinuto);
+          
+
         } catch (error) {
           console.error(`Erro ao processar preços no minuto ${minutoSistemaGlobal}:`, error);
           if (i === inc) dadosMercadoFinais = [];
@@ -79,9 +86,9 @@ const mercadoController = {
       const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [id_usuario]);
       const minhasAcoes = linhasFavoritas.map(linha => linha.cod_acao);
 
-      const precosFechamento = await mercadoService.obterPrecosFechamento();
-      const precosMinuto = await mercadoService.obterPrecosMinuto(minutoSistemaGlobal);
-      const mercadoCompleto = mercadoService.mapearPrecosComVariacao(precosMinuto, precosFechamento);
+      const precosFechamento = await MercadoService.obterPrecosFechamento();
+      const precosMinuto = await MercadoService.obterPrecosMinuto(minutoSistemaGlobal);
+      const mercadoCompleto = MercadoService.mapearPrecosComVariacao(precosMinuto, precosFechamento);
 
       const acoesResposta = mercadoCompleto.filter(m => minhasAcoes.includes(m.codigo));
       const horaNegociacao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
@@ -142,7 +149,7 @@ const mercadoController = {
         const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [idUsuario]);
         const minhasAcoes = linhasFavoritas.map(linha => linha.cod_acao);
 
-        const todasAcoes = await mercadoService.obterPrecosFechamento();
+        const todasAcoes = await MercadoService.obterPrecosFechamento();
 
         const acoesDisponiveis = todasAcoes
         .filter(acaoMercado => !minhasAcoes.includes(acaoMercado.ticker))
@@ -158,11 +165,42 @@ const mercadoController = {
     }catch(error){
        return res.status(500).json({error: 'Erro ao tenta listar ações que não estão na lista inicial do usuário' });
     }
+  },
+
+  exibirAcao: async(req, res) =>{
+    try{
+      const {codigo} = req.params;
+
+      if(!codigo){
+        return res.status(400).json({error: "O código da ação é obrigatório"})
+      }
+
+      const codigoAcao = codigo.toUpperCase().trim();
+      
+      const precoMinuto = await MercadoService.obterPrecosMinuto(minutoSistemaGlobal);
+
+      const acaoEncontrada = precoMinuto.find(c => c.ticker === codigoAcao);
+
+      if(!acaoEncontrada){
+        return res.status(400).json({error: `O código (ticker) ${codigoAcao} não foi encontrado`});
+      }
+
+
+      return res.status(200).json({codigo: codigoAcao, preco_atual: acaoEncontrada.preco});
       
 
-  }
+    }catch(error){
+      console.error('Erro ao exibir ação na modal:', error);
+      return res.status(500).json({error: 'Erro ao tentar exibir informações da ação'});
+    }
+  },
+
+  
 };
 
+mercadoController.obterMinutosAtuais = () => {
+  return minutoSistemaGlobal;
+};
 
 
 mercadoController.resetMinutoSistema = () => {
