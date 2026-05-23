@@ -34,7 +34,7 @@ const mercadoService = {
   },
 
   retornarPrecoAtualAcao: async (codigo, minuto) => {
-      precosMinuto = await mercadoService.obterPrecosMinuto(minuto);
+      const precosMinuto = await mercadoService.obterPrecosMinuto(minuto);
 
       const acao = precosMinuto.find(c => c.ticker === codigo);
       if (!acao) return null;

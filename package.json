@@ -7,6 +7,9 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:service": "jest tests/service",
+    "test:integration": "jest tests/integration",
     "test:watch": "jest --watch"
   },
   "keywords": [],
@@ -30,6 +33,9 @@
     "testEnvironment": "node",
     "setupFiles": [
       "<rootDir>/tests/setup.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
     ]
   }
 }
