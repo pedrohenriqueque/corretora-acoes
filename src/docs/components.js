@@ -184,6 +184,23 @@
  *           type: number
  *           description: Obrigatório para PROGRAMADA. Se >= preço atual, executa na hora.
  *
+ *     VenderAcaoRequest:
+ *       type: object
+ *       required: [codigo, quantidade, tipoOrdem]
+ *       properties:
+ *         codigo:
+ *           type: string
+ *           example: PETR4
+ *         quantidade:
+ *           type: integer
+ *           minimum: 1
+ *         tipoOrdem:
+ *           type: string
+ *           enum: [MERCADO, PROGRAMADA]
+ *         precoOrdem:
+ *           type: number
+ *           description: Obrigatório para PROGRAMADA. Se <= preço atual, executa na hora.
+ *
  *     OrdemExecutada:
  *       type: object
  *       properties:

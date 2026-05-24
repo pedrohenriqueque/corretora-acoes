@@ -83,6 +83,31 @@ const CarteiraService = {
       connection
     );
   },
+
+  removerAcaoVendida: async (
+    id_usuario,
+    cod_acao,
+    quantidade,
+    connection = null
+  ) => {
+    const id_carteira = await CarteiraModel.buscarIdPorUsuario(id_usuario, connection);
+    const posicao = await CarteiraAcaoModel.buscarPosicao(id_carteira, cod_acao, connection);
+
+    if (!posicao || Number(posicao.quantidade) < Number(quantidade)) {
+      throw new Error('Quantidade insuficiente para venda.');
+    }
+
+    const quantidadeFinal = Number(posicao.quantidade) - Number(quantidade);
+
+    // O preço médio de aquisição das cotas restantes não se altera na venda
+    await CarteiraAcaoModel.atualizarPosicao(
+      id_carteira,
+      cod_acao,
+      quantidadeFinal,
+      Number(posicao.preco_medio),
+      connection
+    );
+  },
 };
 
 module.exports = CarteiraService;

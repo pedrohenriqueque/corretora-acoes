@@ -33,6 +33,25 @@ const ContaCorrenteService = {
 
     return conta.id_conta;
   },
+
+  registrarDeposito: async (idUsuario, valor, historico, connection = null) => {
+    if (!valor || valor <= 0) {
+      throw new Error('Valor inválido ou não fornecido.');
+    }
+
+    const conta = await ContaCorrenteModel.buscarContaPorUsuario(idUsuario, connection);
+
+    await ContaCorrenteModel.creditar(conta.id_conta, valor, connection);
+    await ExtratoContaModel.criarLancamento(
+      conta.id_conta,
+      'DEPOSITO',
+      valor,
+      historico,
+      connection
+    );
+
+    return conta.id_conta;
+  },
 };
 
 module.exports = ContaCorrenteService;

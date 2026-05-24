@@ -5,4 +5,11 @@ class SaldoInsuficienteError extends Error {
   }
 }
 
-module.exports = { SaldoInsuficienteError };
+class QuantidadeInsuficienteError extends Error {
+  constructor(message = 'Quantidade insuficiente de ações para a venda.') {
+    super(message);
+    this.name = 'QuantidadeInsuficienteError';
+  }
+}
+
+module.exports = { SaldoInsuficienteError, QuantidadeInsuficienteError };

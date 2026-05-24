@@ -34,6 +34,12 @@ const ContaCorrenteModel = {
     await executor.execute(query, [valor, id_conta]);
   },
 
+  creditar: async (id_conta, valor, connection = null) => {
+    const executor = connection || db;
+    const query = 'UPDATE conta_corrente SET saldo = saldo + ? WHERE id_conta = ?';
+    await executor.execute(query, [valor, id_conta]);
+  },
+
   alterar: async (valor, id_usuario) => {
     const query = 'UPDATE conta_corrente SET saldo = ? WHERE id_usuario = ?';
     await db.execute(query, [valor, id_usuario]);
