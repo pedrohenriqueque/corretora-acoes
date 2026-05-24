@@ -50,6 +50,12 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Usuário bloqueado por excesso de tentativas malsucedidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *
  * /auth/logout:
  *   post:

@@ -67,6 +67,40 @@ const UsuarioModel = {
     const [rows] = await db.execute(query, [id_usuario]);
     return rows;
   },
+
+  salvarTokenRecuperacao: async (id_usuario, token, expiracao) => {
+    const query = 'UPDATE usuario SET codigo_recuperacao = ?, expiracao_recuperacao = ? WHERE id_usuario = ?';
+    await db.execute(query, [token, expiracao, id_usuario]);
+    return true;
+  },
+
+  limparTokenRecuperacao: async (id_usuario) => {
+    const query = 'UPDATE usuario SET codigo_recuperacao = NULL, expiracao_recuperacao = NULL, tentativas_falhas = 0, bloqueado = 0 WHERE id_usuario = ?';
+    await db.execute(query, [id_usuario]);
+    return true;
+  },
+
+  registrarTentativaFalha: async (id_usuario) => {
+    const [rows] = await db.execute('SELECT tentativas_falhas FROM usuario WHERE id_usuario = ?', [id_usuario]);
+    const tentativasAtuais = rows[0]?.tentativas_falhas || 0;
+    const novasTentativas = tentativasAtuais + 1;
+    const bloqueado = novasTentativas >= 3 ? 1 : 0;
+
+    await db.execute(
+      'UPDATE usuario SET tentativas_falhas = ?, bloqueado = ? WHERE id_usuario = ?',
+      [novasTentativas, bloqueado, id_usuario]
+    );
+
+    return { tentativas_falhas: novasTentativas, bloqueado: bloqueado === 1 };
+  },
+
+  resetarTentativas: async (id_usuario) => {
+    await db.execute(
+      'UPDATE usuario SET tentativas_falhas = 0, bloqueado = 0 WHERE id_usuario = ?',
+      [id_usuario]
+    );
+    return true;
+  },
 };
 
 module.exports = UsuarioModel;

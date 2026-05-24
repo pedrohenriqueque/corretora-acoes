@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const UsuarioModel = require('../models/UsuarioModel');
 const ContaCorrenteModel = require('../models/ContaCorrenteModel');
 const CarteiraModel = require('../models/CarteiraModel');
-const validador = require('../utils/authValidators'); // Importa utilitário de validação
+const validador = require('../utils/authValidators');
+const emailTransporter = require('../config/email');
 
 const AuthController = {
   // Lógica de Cadastro
@@ -79,10 +80,28 @@ const AuthController = {
         return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
       }
 
+      // Verifica se o usuário já está bloqueado
+      if (usuario.bloqueado === 1 || usuario.bloqueado === true) {
+        return res.status(403).json({
+          error: 'Sua conta está bloqueada devido a múltiplas tentativas de login malsucedidas. Redefina sua senha para desbloqueá-la.'
+        });
+      }
+
       const senhaValida = await bcrypt.compare(senha, usuario.senha);
       if (!senhaValida) {
+        const lockoutInfo = (await UsuarioModel.registrarTentativaFalha(usuario.id_usuario)) || {};
+        
+        if (lockoutInfo.bloqueado) {
+          return res.status(403).json({
+            error: 'Sua conta foi bloqueada devido a 3 tentativas de login malsucedidas. Redefina sua senha para desbloqueá-la.'
+          });
+        }
+        
         return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
       }
+
+      // Login bem-sucedido - reseta contador de tentativas
+      await UsuarioModel.resetarTentativas(usuario.id_usuario);
 
       // Gera o Token JWT contendo o ID do Usuário
       const token = jwt.sign(
@@ -111,42 +130,95 @@ const AuthController = {
     return res.json({ message: 'Logout efetuado com sucesso.' });
   },
 
-  // Recuperar Senha (Simulação sem login)
   recuperarSenha: async (req, res) => {
     try {
-      let { email, novaSenha, senhaRepetida } = req.body;
-
-      if (!email || !novaSenha || !senhaRepetida) {
-        return res.status(400).json({ error: 'E-mail, nova senha e repetição são obrigatórios.' });
-      }
-
-      if (!validador.verificaSenhaValida(novaSenha)) {
-        return res.status(400).json({ error: 'A nova senha não atende aos critérios de segurança.' });
-      }
-
-      if (novaSenha !== senhaRepetida) {
-        return res.status(400).json({ error: 'A confirmação de senha está diferente da nova senha.' });
-      }
+      const { email, codigo, novaSenha, senhaRepetida } = req.body;
+      if (!email) return res.status(400).json({ error: 'O e-mail é obrigatório.' });
 
       const emailTratado = email.trim().toLowerCase();
+
+      // Se qualquer um dos campos de redefinição for enviado, assume que é a Etapa 2: Redefinição
+      if (codigo !== undefined || novaSenha !== undefined || senhaRepetida !== undefined) {
+        if (!codigo || !novaSenha || !senhaRepetida) {
+          return res.status(400).json({ error: 'Código, nova senha e confirmação de senha são obrigatórios.' });
+        }
+
+        if (novaSenha !== senhaRepetida) {
+          return res.status(400).json({ error: 'A confirmação de senha está diferente da nova senha.' });
+        }
+
+        if (!validador.verificaSenhaValida(novaSenha)) {
+          return res.status(400).json({ error: 'A nova senha deve conter ao menos 8 caracteres, incluindo letras e números.' });
+        }
+
+        const usuario = await UsuarioModel.buscarPorEmail(emailTratado);
+        if (!usuario) {
+          return res.status(400).json({ error: 'Código de verificação inválido ou expirado.' });
+        }
+
+        // Verifica o código de recuperação
+        if (!usuario.codigo_recuperacao || usuario.codigo_recuperacao !== codigo) {
+          return res.status(400).json({ error: 'Código de verificação inválido ou expirado.' });
+        }
+
+        // Verifica expiração do código
+        const agora = new Date();
+        const expiracao = new Date(usuario.expiracao_recuperacao);
+        if (agora > expiracao) {
+          return res.status(400).json({ error: 'Código de verificação inválido ou expirado.' });
+        }
+
+        // Criptografa e salva a nova senha
+        const salt = await bcrypt.genSalt(10);
+        const novaSenhaCriptografada = await bcrypt.hash(novaSenha, salt);
+
+        await UsuarioModel.atualizarSenha(usuario.id_usuario, novaSenhaCriptografada);
+
+        // Limpa o token e reseta o contador de falhas/bloqueio
+        await UsuarioModel.limparTokenRecuperacao(usuario.id_usuario);
+
+        return res.json({ message: 'Senha redefinida com sucesso!' });
+      }
+
+      // Caso contrário, assume que é a Etapa 1: Solicitação de Código
       const usuario = await UsuarioModel.buscarPorEmail(emailTratado);
 
       if (!usuario) {
-        // Blindagem de segurança: Fingimos que deu certo para evitar descoberta de e-mails válidos
-        return res.json({ message: 'Se o e-mail existir, a senha foi redefinida com sucesso!' });
+        return res.json({ message: 'Se o e-mail constar em nossa base, o código de verificação foi enviado.' });
       }
 
-      const salt = await bcrypt.genSalt(10);
-      const novaSenhaCriptografada = await bcrypt.hash(novaSenha, salt);
+      const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
+      const dataExpiracao = new Date(Date.now() + 15 * 60 * 1000); 
 
-      await UsuarioModel.atualizarSenha(usuario.id_usuario, novaSenhaCriptografada);
+      await UsuarioModel.salvarTokenRecuperacao(usuario.id_usuario, codigoVerificacao, dataExpiracao);
 
-      return res.json({ message: 'Se o e-mail existir, a senha foi redefinida com sucesso!' });
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: emailTratado,
+        subject: 'Código de Recuperação de Senha',
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #2c3e50; text-align: center;">Recuperação de Senha</h2>
+            <p>Olá, <strong>${usuario.nome || 'Usuário'}</strong>.</p>
+            <p>Você solicitou a redefinição da sua senha de acesso. Use o código abaixo para prosseguir no sistema:</p>
+            <div style="background: #f8f9fa; padding: 15px; font-size: 26px; font-weight: bold; letter-spacing: 5px; text-align: center; border-radius: 6px; border: 1px dashed #ccc; margin: 20px 0;">
+              ${codigoVerificacao}
+            </div>
+            <p style="font-size: 12px; color: #7f8c8d;">Este código é válido por 15 minutos. Se você não solicitou esta alteração, ignore este e-mail.</p>
+          </div>
+        `
+      };
+
+      await emailTransporter.sendMail(mailOptions);
+
+      return res.json({ message: 'Se o e-mail constar em nossa base, o código de verificação foi enviado.' });
+
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: 'Erro ao recuperar senha.' });
+      console.error('Erro no fluxo de esqueciSenha:', error);
+      return res.status(500).json({ error: 'Erro interno ao processar a recuperação de senha.' });
     }
   },
+
 
   // Trocar de Senha (Usuário Logado e Autenticado pelo Middleware)
   trocarSenha: async (req, res) => {

@@ -74,14 +74,19 @@
  *
  *     RecuperarSenhaRequest:
  *       type: object
- *       required: [email, novaSenha, senhaRepetida]
+ *       required: [email]
  *       properties:
  *         email:
  *           type: string
+ *         codigo:
+ *           type: string
+ *           description: Código numérico de 6 dígitos enviado por e-mail (etapa 2)
  *         novaSenha:
  *           type: string
+ *           description: Nova senha com letras e números, mínimo 8 caracteres (etapa 2)
  *         senhaRepetida:
  *           type: string
+ *           description: Confirmação da nova senha (etapa 2)
  *
  *     TrocarSenhaRequest:
  *       type: object
