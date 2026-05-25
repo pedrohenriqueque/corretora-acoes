@@ -2,6 +2,16 @@ const ContaCorrenteModel = require('../models/ContaCorrenteModel');
 const ExtratoContaModel = require('../models/ExtratoContaModel');
 const { SaldoInsuficienteError } = require('../errors/ordemErrors');
 
+const isConnection = (value) => value && typeof value.execute === 'function';
+
+const prefixarHistoricoComHora = (historico, horaSistema) => {
+  if (!horaSistema) {
+    return historico;
+  }
+
+  return `${horaSistema} - ${historico}`;
+};
+
 const ContaCorrenteService = {
   obterSaldoConta: async (idUsuario) => {
     if (!idUsuario) {
@@ -11,7 +21,12 @@ const ContaCorrenteService = {
     return ContaCorrenteModel.buscarSaldoUsuario(idUsuario);
   },
 
-  registrarRetirada: async (idUsuario, valor, historico, connection = null) => {
+  registrarRetirada: async (idUsuario, valor, historico, horaSistema = null, connection = null) => {
+    if (isConnection(horaSistema)) {
+      connection = horaSistema;
+      horaSistema = null;
+    }
+
     if (!valor || valor <= 0) {
       throw new Error('Valor inválido ou não fornecido.');
     }
@@ -27,14 +42,20 @@ const ContaCorrenteService = {
       conta.id_conta,
       'RETIRADA',
       valor,
-      historico,
+      prefixarHistoricoComHora(historico, horaSistema),
+      horaSistema,
       connection
     );
 
     return conta.id_conta;
   },
 
-  registrarDeposito: async (idUsuario, valor, historico, connection = null) => {
+  registrarDeposito: async (idUsuario, valor, historico, horaSistema = null, connection = null) => {
+    if (isConnection(horaSistema)) {
+      connection = horaSistema;
+      horaSistema = null;
+    }
+
     if (!valor || valor <= 0) {
       throw new Error('Valor inválido ou não fornecido.');
     }
@@ -46,7 +67,8 @@ const ContaCorrenteService = {
       conta.id_conta,
       'DEPOSITO',
       valor,
-      historico,
+      prefixarHistoricoComHora(historico, horaSistema),
+      horaSistema,
       connection
     );
 

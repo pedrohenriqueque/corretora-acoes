@@ -39,6 +39,7 @@ const OrdemController = {
       const codigoAcao = normalizarCodigo(codigo);
       let precoFinal = precoOrdem;
       const minutosAtuais = MercadoController.obterMinutosAtuais();
+      const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
 
       const acaoCadastrada = await AcaoModel.existePorCodigo(codigoAcao);
       if (!acaoCadastrada) {
@@ -72,7 +73,8 @@ const OrdemController = {
         validacaoQtd.valor,
         tipoOrdem,
         precoFinal,
-        precoAtualMercado
+        precoAtualMercado,
+        horaSistema
       );
 
       return res.status(201).json(resultado);
@@ -128,6 +130,7 @@ const OrdemController = {
       const codigoAcao = normalizarCodigo(codigo);
       let precoFinal = precoOrdem;
       const minutosAtuais = MercadoController.obterMinutosAtuais();
+      const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
 
       const acaoCadastrada = await AcaoModel.existePorCodigo(codigoAcao);
       if (!acaoCadastrada) {
@@ -161,7 +164,8 @@ const OrdemController = {
         validacaoQtd.valor,
         tipoOrdem,
         precoFinal,
-        precoAtualMercado
+        precoAtualMercado,
+        horaSistema
       );
 
       return res.status(201).json(resultado);
