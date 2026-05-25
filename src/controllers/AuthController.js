@@ -90,13 +90,13 @@ const AuthController = {
       const senhaValida = await bcrypt.compare(senha, usuario.senha);
       if (!senhaValida) {
         const lockoutInfo = (await UsuarioModel.registrarTentativaFalha(usuario.id_usuario)) || {};
-        
+
         if (lockoutInfo.bloqueado) {
           return res.status(403).json({
             error: 'Sua conta foi bloqueada devido a 3 tentativas de login malsucedidas. Redefina sua senha para desbloqueá-la.'
           });
         }
-        
+
         return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
       }
 
@@ -188,12 +188,12 @@ const AuthController = {
       }
 
       const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
-      const dataExpiracao = new Date(Date.now() + 15 * 60 * 1000); 
+      const dataExpiracao = new Date(Date.now() + 15 * 60 * 1000);
 
       await UsuarioModel.salvarTokenRecuperacao(usuario.id_usuario, codigoVerificacao, dataExpiracao);
 
       const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: process.env.EMAIL_FROM,
         to: emailTratado,
         subject: 'Código de Recuperação de Senha',
         html: `
