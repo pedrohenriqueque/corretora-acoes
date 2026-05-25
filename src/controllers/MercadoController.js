@@ -45,7 +45,8 @@ const mercadoController = {
             dadosMercadoFinais = dadosMercado;
           }
 
-          await OrdemService.processarOrdensPendentes(precosMinuto);
+          const horaExecucao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
+          await OrdemService.processarOrdensPendentes(precosMinuto, horaExecucao);
           
 
         } catch (error) {

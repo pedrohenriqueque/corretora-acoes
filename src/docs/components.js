@@ -221,6 +221,14 @@
  *         status:
  *           type: string
  *           enum: [EXECUTADA]
+ *         hora_lancamento:
+ *           type: string
+ *           format: time
+ *           example: '14:05'
+ *         hora_execucao:
+ *           type: string
+ *           format: time
+ *           example: '14:05'
  *
  *     OrdemPendente:
  *       type: object
@@ -240,6 +248,14 @@
  *         status:
  *           type: string
  *           enum: [PENDENTE]
+ *         hora_lancamento:
+ *           type: string
+ *           format: time
+ *           example: '14:05'
+ *         hora_execucao:
+ *           type: string
+ *           format: time
+ *           nullable: true
  *
  *     PosicaoCarteira:
  *       allOf:
