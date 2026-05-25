@@ -6,6 +6,7 @@ const protegerRota = require('./middleware/authMiddleware');
 const mercadoRoutes = require('./routes/mercadoRoutes');
 const ordemRoutes = require('./routes/ordemRoutes');
 const carteiraRoutes = require('./routes/carteiraRoutes');
+const contaCorrenteRoutes = require('./routes/contaCorrenteRoutes');
 
 const app = express();
 app.use(express.json());
@@ -19,6 +20,7 @@ app.get('/api-docs.json', (req, res) => {
 app.use('/mercado', mercadoRoutes);
 app.use('/ordem', ordemRoutes);
 app.use('/carteira', carteiraRoutes);
+app.use('/conta-corrente', contaCorrenteRoutes);
 
 app.post('/auth/register', authController.register);
 app.post('/auth/login', authController.login);

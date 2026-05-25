@@ -8,6 +8,12 @@ const ExtratoContaModel = {
     const [result] = await executor.execute(query, [id_conta, tipo_transacao, valor, historico, data_hora]);
     return result.insertId;
   },
+
+  listarLancamentosPorConta: async (id_conta) => {
+    const query = 'SELECT * FROM extrato_conta WHERE id_conta = ? ORDER BY data_hora ASC';
+    const [rows] = await db.execute(query, [id_conta]);
+    return rows;
+  },
 };
 
 module.exports = ExtratoContaModel;

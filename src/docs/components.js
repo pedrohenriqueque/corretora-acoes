@@ -281,6 +281,49 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PosicaoCarteira'
+ *
+ *     ContaCorrenteLancamento:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           nullable: true
+ *         data_hora:
+ *           type: string
+ *           format: time
+ *           example: '14:10'
+ *         descricao:
+ *           type: string
+ *           example: Depósito manual
+ *         tipo:
+ *           type: string
+ *           enum: [deposito, retirada]
+ *         valor:
+ *           type: number
+ *         saldo_resultante:
+ *           type: number
+ *
+ *     ContaCorrenteDepositoRequest:
+ *       type: object
+ *       required: [descricao, valor]
+ *       properties:
+ *         descricao:
+ *           type: string
+ *           example: Depósito manual
+ *         valor:
+ *           type: number
+ *           example: 1000
+ *
+ *     ContaCorrenteRetiradaRequest:
+ *       type: object
+ *       required: [descricao, valor]
+ *       properties:
+ *         descricao:
+ *           type: string
+ *           example: Retirada manual
+ *         valor:
+ *           type: number
+ *           example: 500
  */
 
 module.exports = {};
