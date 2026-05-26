@@ -5,7 +5,7 @@ const OrdemService = require('../services/OrdemService.js');
 const MercadoService = require('../services/MercadoService.js'); // Importa o service
 
 // O estado do tempo global continua aqui na memória do Node.js
-let minutoSistemaGlobal = 0; 
+let minutoSistemaGlobal = 0;
 
 const mercadoController = {
 
@@ -22,11 +22,23 @@ const mercadoController = {
         return res.status(400).json({ error: 'O incremento de minutos é inválido.' });
       }
 
+      if (minutoSistemaGlobal >= 59) {
+        return res.status(400).json({ error: 'O pregão já está encerrado (14:59). Não é possível avançar mais.' });
+      }
+
+      let incrementoReal = inc;
+      let aviso = undefined;
+
+      if (minutoSistemaGlobal + inc > 59) {
+        incrementoReal = 59 - minutoSistemaGlobal;
+        aviso = 'A simulação atingiu o final do dia de negociação (14:59). O tempo restante de avanço foi ajustado automaticamente.';
+      }
+
       // Usa o service para buscar o fechamento
       const precosFechamento = await MercadoService.obterPrecosFechamento();
       let dadosMercadoFinais = [];
 
-      for (let i = 1; i <= inc; i++) {
+      for (let i = 1; i <= incrementoReal; i++) {
         if (minutoSistemaGlobal >= 59) {
           minutoSistemaGlobal = 59;
           break;
@@ -41,22 +53,26 @@ const mercadoController = {
 
           const dadosMercado = MercadoService.mapearPrecosComVariacao(precosMinuto, precosFechamento);
 
-          if (i === inc || minutoSistemaGlobal === 59) {
+          if (i === incrementoReal || minutoSistemaGlobal === 59) {
             dadosMercadoFinais = dadosMercado;
           }
 
           const horaExecucao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
           await OrdemService.processarOrdensPendentes(precosMinuto, horaExecucao);
-          
+
 
         } catch (error) {
           console.error(`Erro ao processar preços no minuto ${minutoSistemaGlobal}:`, error);
-          if (i === inc) dadosMercadoFinais = [];
+          if (i === incrementoReal) dadosMercadoFinais = [];
         }
       }
 
       const novaHoraNegociacao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
-      return res.json({ novaHoraNegociacao, acoes: dadosMercadoFinais });
+      const resposta = { novaHoraNegociacao, acoes: dadosMercadoFinais };
+      if (aviso) {
+        resposta.aviso = aviso;
+      }
+      return res.json(resposta);
 
     } catch (error) {
       console.error(error);
@@ -82,7 +98,7 @@ const mercadoController = {
   // ========================================================
   listaAcoesInteresse: async (req, res) => {
     try {
-      const id_usuario = req.usuarioId; 
+      const id_usuario = req.usuarioId;
 
       const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [id_usuario]);
       const minhasAcoes = linhasFavoritas.map(linha => linha.cod_acao);
@@ -112,12 +128,21 @@ const mercadoController = {
 
       if (!codigo) return res.status(400).json({ error: 'Código da ação é obrigatório.' });
 
-      await db.execute('INSERT INTO acoes_favoritadas (user_id, cod_acao) VALUES (?, ?)', [id_usuario, codigo.toUpperCase().trim()]);
+      const codUpper = codigo.toUpperCase().trim();
+
+      const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [id_usuario]);
+      const jaFavoritada = linhasFavoritas.some(linha => linha.cod_acao === codUpper);
+
+      if (jaFavoritada) {
+        return res.status(400).json({ error: 'Ação já está na lista de interesse.' });
+      }
+
+      await db.execute('INSERT INTO acoes_favoritadas (user_id, cod_acao) VALUES (?, ?)', [id_usuario, codUpper]);
 
       return mercadoController.listaAcoesInteresse(req, res);
     } catch (error) {
       if (error.code === 'ER_DUP_ENTRY') {
-        return mercadoController.listaAcoesInteresse(req, res);
+        return res.status(400).json({ error: 'Ação já está na lista de interesse.' });
       }
       console.error(error);
       return res.status(500).json({ error: 'Erro ao adicionar ação de interesse.' });
@@ -134,7 +159,16 @@ const mercadoController = {
 
       if (!codigo) return res.status(400).json({ error: 'Código da ação é obrigatório.' });
 
-      await db.execute('DELETE FROM acoes_favoritadas WHERE user_id = ? AND cod_acao = ?', [id_usuario, codigo.toUpperCase().trim()]);
+      const codUpper = codigo.toUpperCase().trim();
+
+      const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [id_usuario]);
+      const estaFavoritada = linhasFavoritas.some(linha => linha.cod_acao === codUpper);
+
+      if (!estaFavoritada) {
+        return res.status(400).json({ error: 'Ação não está na lista de interesse.' });
+      }
+
+      await db.execute('DELETE FROM acoes_favoritadas WHERE user_id = ? AND cod_acao = ?', [id_usuario, codUpper]);
 
       return mercadoController.listaAcoesInteresse(req, res);
     } catch (error) {
@@ -144,15 +178,15 @@ const mercadoController = {
   },
 
   listarAcoesDisponiveis: async (req, res) => {
-    try{
-        const idUsuario = req.usuarioId;
+    try {
+      const idUsuario = req.usuarioId;
 
-        const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [idUsuario]);
-        const minhasAcoes = linhasFavoritas.map(linha => linha.cod_acao);
+      const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [idUsuario]);
+      const minhasAcoes = linhasFavoritas.map(linha => linha.cod_acao);
 
-        const todasAcoes = await MercadoService.obterPrecosFechamento();
+      const todasAcoes = await MercadoService.obterPrecosFechamento();
 
-        const acoesDisponiveis = todasAcoes
+      const acoesDisponiveis = todasAcoes
         .filter(acaoMercado => !minhasAcoes.includes(acaoMercado.ticker))
         .map(acaoMercado => ({
           codigo: acaoMercado.ticker,
@@ -160,43 +194,43 @@ const mercadoController = {
         }));
 
 
-        return res.status(200).json(acoesDisponiveis);          
+      return res.status(200).json(acoesDisponiveis);
 
 
-    }catch(error){
-       return res.status(500).json({error: 'Erro ao tenta listar ações que não estão na lista inicial do usuário' });
+    } catch (error) {
+      return res.status(500).json({ error: 'Erro ao tenta listar ações que não estão na lista inicial do usuário' });
     }
   },
 
-  exibirAcao: async(req, res) =>{
-    try{
-      const {codigo} = req.params;
+  exibirAcao: async (req, res) => {
+    try {
+      const { codigo } = req.params;
 
-      if(!codigo){
-        return res.status(400).json({error: "O código da ação é obrigatório"})
+      if (!codigo) {
+        return res.status(400).json({ error: "O código da ação é obrigatório" })
       }
 
       const codigoAcao = codigo.toUpperCase().trim();
-      
+
       const precoMinuto = await MercadoService.obterPrecosMinuto(minutoSistemaGlobal);
 
       const acaoEncontrada = precoMinuto.find(c => c.ticker === codigoAcao);
 
-      if(!acaoEncontrada){
-        return res.status(400).json({error: `O código (ticker) ${codigoAcao} não foi encontrado`});
+      if (!acaoEncontrada) {
+        return res.status(400).json({ error: `O código (ticker) ${codigoAcao} não foi encontrado` });
       }
 
 
-      return res.status(200).json({codigo: codigoAcao, preco_atual: acaoEncontrada.preco});
-      
+      return res.status(200).json({ codigo: codigoAcao, preco_atual: acaoEncontrada.preco });
 
-    }catch(error){
+
+    } catch (error) {
       console.error('Erro ao exibir ação na modal:', error);
-      return res.status(500).json({error: 'Erro ao tentar exibir informações da ação'});
+      return res.status(500).json({ error: 'Erro ao tentar exibir informações da ação' });
     }
   },
 
-  
+
 };
 
 mercadoController.obterMinutosAtuais = () => {
