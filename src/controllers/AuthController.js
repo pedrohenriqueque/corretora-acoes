@@ -26,7 +26,7 @@ const AuthController = {
     }
 
     if (!validador.verificaSenhaValida(senha)) {
-      return res.status(400).json({ error: 'A senha deve conter ao menos 8 caracteres, incluindo letras e números.' });
+      return res.status(400).json({ error: 'A senha deve conter ao menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e caracteres especiais.' });
     }
 
     if (senha !== senhaRepetida) {
@@ -148,7 +148,7 @@ const AuthController = {
         }
 
         if (!validador.verificaSenhaValida(novaSenha)) {
-          return res.status(400).json({ error: 'A nova senha deve conter ao menos 8 caracteres, incluindo letras e números.' });
+          return res.status(400).json({ error: 'A nova senha deve conter ao menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e caracteres especiais.' });
         }
 
         const usuario = await UsuarioModel.buscarPorEmail(emailTratado);
@@ -231,7 +231,7 @@ const AuthController = {
       }
 
       if (!validador.verificaSenhaValida(novaSenha)) {
-        return res.status(400).json({ error: 'A nova senha deve conter ao menos 8 caracteres, letras e números.' });
+        return res.status(400).json({ error: 'A nova senha deve conter ao menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e caracteres especiais.' });
       }
 
       if (novaSenha !== novaSenhaRepetida) {

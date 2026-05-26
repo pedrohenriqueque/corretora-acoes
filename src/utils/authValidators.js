@@ -6,7 +6,13 @@ function verificaEmailValido(email) {
 function verificaSenhaValida(senha) {
   if (!senha) return false;
   if (senha.length < 8) return false;
-  return /.*[a-zA-Z].*$/.test(senha) && /.*[0-9].*$/.test(senha);
+  
+  const temLetraMaiuscula = /[A-Z]/.test(senha);
+  const temLetraMinuscula = /[a-z]/.test(senha);
+  const temNumero = /[0-9]/.test(senha);
+  const temEspecial = /[^A-Za-z0-9]/.test(senha);
+  
+  return temLetraMaiuscula && temLetraMinuscula && temNumero && temEspecial;
 }
 
 function validarEmail(email) {
@@ -31,7 +37,7 @@ function validarSenha(senha) {
   if (!verificaSenhaValida(senha)) {
     return {
       valido: false,
-      erro: 'A senha deve conter ao menos 8 caracteres, incluindo letras e números.',
+      erro: 'A senha deve conter ao menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e caracteres especiais.',
     };
   }
 
