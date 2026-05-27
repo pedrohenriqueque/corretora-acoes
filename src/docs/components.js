@@ -208,6 +208,8 @@
  *           type: integer
  *         cod_acao:
  *           type: string
+ *         preco_ordem:
+ *           type: number
  *         preco_execucao:
  *           type: number
  *         valor_total:
@@ -345,6 +347,16 @@
  *         valor:
  *           type: number
  *           example: 500
+ *
+ *     ContaCorrenteSaldoResponse:
+ *       type: object
+ *       properties:
+ *         data_hora:
+ *           type: string
+ *           format: time
+ *           example: '14:10'
+ *         saldo:
+ *           type: number
  */
 
 module.exports = {};

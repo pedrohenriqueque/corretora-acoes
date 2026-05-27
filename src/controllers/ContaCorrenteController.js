@@ -14,6 +14,22 @@ const ContaCorrenteController = {
     }
   },
 
+  obterSaldo: async (req, res) => {
+    try {
+      const idUsuario = req.usuarioId;
+      const minutosAtuais = await MercadoController.obterMinutosAtuais();
+      const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
+      const saldoAtual = await ContaCorrenteService.obterSaldoConta(idUsuario);
+      return res.status(200).json({
+        data_hora: horaSistema,
+        saldo: saldoAtual,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Erro interno ao obter saldo da conta corrente.' });
+    }
+  },
+
   registrarDeposito: async (req, res) => {
     try {
       if (!req.body) {
@@ -32,7 +48,7 @@ const ContaCorrenteController = {
         return res.status(400).json({ error: 'Valor inválido ou não fornecido.' });
       }
 
-      const minutosAtuais = MercadoController.obterMinutosAtuais();
+      const minutosAtuais = await MercadoController.obterMinutosAtuais();
       const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
 
       await ContaCorrenteService.registrarDeposito(
@@ -77,7 +93,7 @@ const ContaCorrenteController = {
         return res.status(400).json({ error: 'Valor inválido ou não fornecido.' });
       }
 
-      const minutosAtuais = MercadoController.obterMinutosAtuais();
+      const minutosAtuais = await MercadoController.obterMinutosAtuais();
       const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
 
       await ContaCorrenteService.registrarRetirada(
@@ -102,7 +118,9 @@ const ContaCorrenteController = {
       console.error(error);
 
       if (error instanceof SaldoInsuficienteError) {
-        return res.status(400).json({ error: error.message });
+        return res.status(400).json({
+          error: 'Saldo insuficiente. Não foi possível realizar a operação'
+        });
       }
 
       if (error.message && error.message.includes('Valor inválido')) {

@@ -10,7 +10,7 @@ const ExtratoContaModel = {
   },
 
   listarLancamentosPorConta: async (id_conta) => {
-    const query = 'SELECT * FROM extrato_conta WHERE id_conta = ? ORDER BY data_hora ASC';
+    const query = 'SELECT * FROM extrato_conta WHERE id_conta = ? ORDER BY id_extrato ASC';
     const [rows] = await db.execute(query, [id_conta]);
     return rows;
   },

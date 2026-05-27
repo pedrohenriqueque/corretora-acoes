@@ -13,6 +13,7 @@ const OrdemService = {
     codAcao,
     quantidade,
     precoExecucao,
+    precoOrdem = null,
     tipoOrdem,
     idOrdemExistente = null,
     horaLancamento,
@@ -31,23 +32,6 @@ const OrdemService = {
 
       let idOrdem = idOrdemExistente;
 
-      if (!idOrdem) {
-        idOrdem = await OrdemModel.criarOrdem(
-          idUsuario,
-          codigo,
-          preco,
-          'COMPRA',
-          tipoOrdem,
-          qtd,
-          'EXECUTADA',
-          horaLancamento,
-          horaExecucao,
-          connection
-        );
-      } else {
-        await OrdemModel.atualizarStatusOrdem(idOrdem, 'EXECUTADA', horaExecucao, connection);
-      }
-
       await ContaCorrenteService.registrarRetirada(
         idUsuario,
         valorTotal,
@@ -63,12 +47,32 @@ const OrdemService = {
         connection
       );
 
+      if (!idOrdem) {
+        const precoOrdemFinal = precoOrdem ?? preco;
+        idOrdem = await OrdemModel.criarOrdem(
+          idUsuario,
+          codigo,
+          precoOrdemFinal,
+          preco,
+          'COMPRA',
+          tipoOrdem,
+          qtd,
+          'EXECUTADA',
+          horaLancamento,
+          horaExecucao,
+          connection
+        );
+      } else {
+        await OrdemModel.atualizarStatusOrdem(idOrdem, 'EXECUTADA', horaExecucao, preco, connection);
+      }
+
       await connection.commit();
 
       return {
         id_ordem: idOrdem,
         id_usuario: idUsuario,
         cod_acao: codigo,
+        preco_ordem: precoOrdem ?? preco,
         preco_execucao: preco,
         valor_total: valorTotal,
         quantidade: qtd,
@@ -102,6 +106,7 @@ const OrdemService = {
         codAcao,
         quantidade,
         precoExecucao: precoOrdem,
+        precoOrdem,
         tipoOrdem,
         horaLancamento: horaSistema,
         horaExecucao: horaSistema,
@@ -111,22 +116,13 @@ const OrdemService = {
     if (tipoOrdem === 'PROGRAMADA') {
       const precoAtual = Number(precoAtualMercado);
 
-      if (Number.isFinite(precoAtual) && precoOrdem >= precoAtual) {
-        return OrdemService.executarCompra({
-          idUsuario,
-          codAcao,
-          quantidade,
-          precoExecucao: precoAtual,
-          tipoOrdem,
-          horaLancamento: horaSistema,
-          horaExecucao: horaSistema,
-        });
-      }
+      const precoAtingiu = Number.isFinite(precoAtual) && precoOrdem >= precoAtual;
 
       const idOrdem = await OrdemModel.criarOrdem(
         idUsuario,
         codAcao,
         precoOrdem,
+        null,
         'COMPRA',
         tipoOrdem,
         quantidade,
@@ -134,6 +130,38 @@ const OrdemService = {
         horaSistema,
         null
       );
+
+      if (precoAtingiu) {
+        try {
+          return await OrdemService.executarCompra({
+            idUsuario,
+            codAcao,
+            quantidade,
+            precoExecucao: precoAtual,
+            precoOrdem,
+            tipoOrdem,
+            idOrdemExistente: idOrdem,
+            horaExecucao: horaSistema,
+          });
+        } catch (error) {
+          if (error instanceof SaldoInsuficienteError) {
+            await OrdemModel.atualizarStatusOrdem(idOrdem, 'CANCELADA', horaSistema, null);
+            return {
+              id_ordem: idOrdem,
+              id_usuario: idUsuario,
+              cod_acao: codAcao,
+              preco_ordem: precoOrdem,
+              preco_execucao: null,
+              quantidade,
+              tipo_ordem: tipoOrdem,
+              status: 'CANCELADA',
+              hora_lancamento: horaSistema,
+              hora_execucao: horaSistema,
+            };
+          }
+          throw error;
+        }
+      }
 
       return {
         id_ordem: idOrdem,
@@ -156,6 +184,7 @@ const OrdemService = {
     codAcao,
     quantidade,
     precoExecucao,
+    precoOrdem = null,
     tipoOrdem,
     idOrdemExistente = null,
     horaLancamento,
@@ -175,9 +204,11 @@ const OrdemService = {
       let idOrdem = idOrdemExistente;
 
       if (!idOrdem) {
+        const precoOrdemFinal = precoOrdem ?? preco;
         idOrdem = await OrdemModel.criarOrdem(
           idUsuario,
           codigo,
+          precoOrdemFinal,
           preco,
           'VENDA',
           tipoOrdem,
@@ -188,7 +219,7 @@ const OrdemService = {
           connection
         );
       } else {
-        await OrdemModel.atualizarStatusOrdem(idOrdem, 'EXECUTADA', horaExecucao, connection);
+        await OrdemModel.atualizarStatusOrdem(idOrdem, 'EXECUTADA', horaExecucao, preco, connection);
       }
 
       await ContaCorrenteService.registrarDeposito(
@@ -211,6 +242,7 @@ const OrdemService = {
         id_ordem: idOrdem,
         id_usuario: idUsuario,
         cod_acao: codigo,
+        preco_ordem: precoOrdem ?? preco,
         preco_execucao: preco,
         valor_total: valorTotal,
         quantidade: qtd,
@@ -252,6 +284,7 @@ const OrdemService = {
         codAcao,
         quantidade,
         precoExecucao: precoOrdem,
+        precoOrdem,
         tipoOrdem,
         horaLancamento: horaSistema,
         horaExecucao: horaSistema,
@@ -268,6 +301,7 @@ const OrdemService = {
           codAcao,
           quantidade,
           precoExecucao: precoAtual,
+          precoOrdem,
           tipoOrdem,
           horaLancamento: horaSistema,
           horaExecucao: horaSistema,
@@ -279,6 +313,7 @@ const OrdemService = {
         idUsuario,
         codAcao,
         precoOrdem,
+        null,
         'VENDA',
         tipoOrdem,
         quantidade,
@@ -320,6 +355,7 @@ const OrdemService = {
             codAcao: ordem.cod_acao,
             quantidade: ordem.quantidade,
             precoExecucao: acao.preco,
+            precoOrdem: ordem.preco_ordem,
             tipoOrdem: ordem.tipo_ordem,
             idOrdemExistente: ordem.id_ordem,
             horaExecucao,
@@ -333,6 +369,7 @@ const OrdemService = {
             codAcao: ordem.cod_acao,
             quantidade: ordem.quantidade,
             precoExecucao: acao.preco,
+            precoOrdem: ordem.preco_ordem,
             tipoOrdem: ordem.tipo_ordem,
             idOrdemExistente: ordem.id_ordem,
             horaExecucao,
@@ -344,7 +381,7 @@ const OrdemService = {
           error instanceof QuantidadeInsuficienteError ||
           error.name === 'QuantidadeInsuficienteError'
         ) {
-          await OrdemModel.atualizarStatusOrdem(ordem.id_ordem, 'CANCELADA', horaExecucao);
+          await OrdemModel.atualizarStatusOrdem(ordem.id_ordem, 'CANCELADA', horaExecucao, null);
           continue;
         }
 
@@ -380,12 +417,13 @@ const OrdemService = {
       return null;
     }
 
-    await OrdemModel.atualizarStatusOrdem(idOrdem, 'CANCELADA', horaExecucao);
+    await OrdemModel.atualizarStatusOrdem(idOrdem, 'CANCELADA', horaExecucao, null);
 
     return {
       id_ordem: ordem.id_ordem,
       cod_acao: ordem.cod_acao,
       preco_ordem: ordem.preco_ordem,
+      preco_execucao: null,
       quantidade: ordem.quantidade,
       tipo_ordem: ordem.tipo_ordem,
       status: 'CANCELADA',

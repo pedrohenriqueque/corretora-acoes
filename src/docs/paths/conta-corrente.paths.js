@@ -81,6 +81,24 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *
+ * /conta-corrente/saldo:
+ *   get:
+ *     tags: [ContaCorrente]
+ *     summary: Retorna o saldo atual da conta corrente
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ContaCorrenteSaldoResponse'
+ *       401:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 
 module.exports = {};

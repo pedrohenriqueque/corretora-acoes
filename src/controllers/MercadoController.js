@@ -3,9 +3,26 @@ const db = require('../config/database.js');
 const UsuarioModel = require('../models/UsuarioModel.js');
 const OrdemService = require('../services/OrdemService.js');
 const MercadoService = require('../services/MercadoService.js'); // Importa o service
+const TempoSistemaModel = require('../models/TempoSistemaModel');
 
 // O estado do tempo global continua aqui na memória do Node.js
-let minutoSistemaGlobal = 0;
+let minutoSistemaGlobal = null;
+
+const garantirMinutoCarregado = async () => {
+  if (minutoSistemaGlobal !== null) {
+    return minutoSistemaGlobal;
+  }
+
+  const minutoPersistido = await TempoSistemaModel.obterMinuto();
+  if (minutoPersistido === null || Number.isNaN(minutoPersistido)) {
+    minutoSistemaGlobal = 0;
+    await TempoSistemaModel.salvarMinuto(minutoSistemaGlobal);
+    return minutoSistemaGlobal;
+  }
+
+  minutoSistemaGlobal = minutoPersistido;
+  return minutoSistemaGlobal;
+};
 
 const mercadoController = {
 
@@ -14,6 +31,7 @@ const mercadoController = {
   // ========================================================
   avancaTempo: async (req, res) => {
     try {
+      await garantirMinutoCarregado();
       const inc = parseInt(
         req.body.incrementoMinutos !== undefined ? req.body.incrementoMinutos : 1,
         10
@@ -67,6 +85,8 @@ const mercadoController = {
         }
       }
 
+      await TempoSistemaModel.salvarMinuto(minutoSistemaGlobal);
+
       const novaHoraNegociacao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
       const resposta = { novaHoraNegociacao, acoes: dadosMercadoFinais };
       if (aviso) {
@@ -85,6 +105,7 @@ const mercadoController = {
   // ========================================================
   pegaTempo: async (req, res) => {
     try {
+      await garantirMinutoCarregado();
       const horaNegociacao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
       return res.json({ horaNegociacao });
     } catch (error) {
@@ -98,6 +119,7 @@ const mercadoController = {
   // ========================================================
   listaAcoesInteresse: async (req, res) => {
     try {
+      await garantirMinutoCarregado();
       const id_usuario = req.usuarioId;
 
       const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [id_usuario]);
@@ -123,6 +145,7 @@ const mercadoController = {
   // ========================================================
   adicionaAcaoInteresse: async (req, res) => {
     try {
+      await garantirMinutoCarregado();
       const id_usuario = req.usuarioId;
       const { codigo } = req.body;
 
@@ -154,6 +177,7 @@ const mercadoController = {
   // ========================================================
   removeAcaoInteresse: async (req, res) => {
     try {
+      await garantirMinutoCarregado();
       const id_usuario = req.usuarioId;
       const { codigo } = req.body;
 
@@ -179,6 +203,7 @@ const mercadoController = {
 
   listarAcoesDisponiveis: async (req, res) => {
     try {
+      await garantirMinutoCarregado();
       const idUsuario = req.usuarioId;
 
       const [linhasFavoritas] = await db.execute('SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', [idUsuario]);
@@ -204,6 +229,7 @@ const mercadoController = {
 
   exibirAcao: async (req, res) => {
     try {
+      await garantirMinutoCarregado();
       const { codigo } = req.params;
 
       if (!codigo) {
@@ -233,13 +259,14 @@ const mercadoController = {
 
 };
 
-mercadoController.obterMinutosAtuais = () => {
-  return minutoSistemaGlobal;
+mercadoController.obterMinutosAtuais = async () => {
+  return garantirMinutoCarregado();
 };
 
 
-mercadoController.resetMinutoSistema = () => {
+mercadoController.resetMinutoSistema = async () => {
   minutoSistemaGlobal = 0;
+  await TempoSistemaModel.salvarMinuto(minutoSistemaGlobal);
 };
 
 module.exports = mercadoController;

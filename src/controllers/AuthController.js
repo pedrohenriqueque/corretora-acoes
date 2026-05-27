@@ -42,7 +42,7 @@ const AuthController = {
       const idUsuario = await UsuarioModel.criar(nome, emailTratado, senhaCriptografada);
 
       // Cria a infraestrutura do investidor
-      await ContaCorrenteModel.criarConta(idUsuario, 50000000.00);
+      await ContaCorrenteModel.criarConta(idUsuario, 0.00);
       await CarteiraModel.criarCarteira(idUsuario);
 
       // Sorteio de ações favoritas iniciais

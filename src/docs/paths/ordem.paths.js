@@ -80,6 +80,9 @@
  *   get:
  *     tags: [Ordem]
  *     summary: Lista ordens do usuário
+ *     description: |
+ *       Para ordens EXECUTADAS, inclui `preco_execucao` (preço efetivo) e `preco_ordem` (alvo).
+ *       Para PENDENTE/CANCELADA, `preco_execucao` é nulo.
  *     security:
  *       - bearerAuth: []
  *     responses:

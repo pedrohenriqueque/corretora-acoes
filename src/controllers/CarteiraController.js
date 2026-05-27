@@ -5,7 +5,7 @@ const CarteiraController = {
   listarCarteira: async (req, res) => {
     try {
       const idUsuario = req.usuarioId;
-      const minutoAtual = MercadoController.obterMinutosAtuais();
+      const minutoAtual = await MercadoController.obterMinutosAtuais();
       const horaNegociacao = `14:${minutoAtual.toString().padStart(2, '0')}`;
 
       const { acoes, ganhos_perdas_total } = await CarteiraService.obterCarteiraComPrecos(

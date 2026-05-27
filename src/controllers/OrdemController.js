@@ -38,7 +38,7 @@ const OrdemController = {
 
       const codigoAcao = normalizarCodigo(codigo);
       let precoFinal = precoOrdem;
-      const minutosAtuais = MercadoController.obterMinutosAtuais();
+      const minutosAtuais = await MercadoController.obterMinutosAtuais();
       const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
 
       const acaoCadastrada = await AcaoModel.existePorCodigo(codigoAcao);
@@ -129,7 +129,7 @@ const OrdemController = {
 
       const codigoAcao = normalizarCodigo(codigo);
       let precoFinal = precoOrdem;
-      const minutosAtuais = MercadoController.obterMinutosAtuais();
+      const minutosAtuais = await MercadoController.obterMinutosAtuais();
       const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
 
       const acaoCadastrada = await AcaoModel.existePorCodigo(codigoAcao);
@@ -214,7 +214,7 @@ const OrdemController = {
         return res.status(400).json({ error: 'ID da ordem é obrigatório.' });
       }
 
-      const minutosAtuais = MercadoController.obterMinutosAtuais();
+      const minutosAtuais = await MercadoController.obterMinutosAtuais();
       const horaSistema = `14:${minutosAtuais.toString().padStart(2, '0')}`;
 
       const resultado = await OrdemService.cancelarOrdemPendente(
