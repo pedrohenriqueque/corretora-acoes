@@ -11,6 +11,7 @@
  *     description: |
  *       Usa o mesmo relógio e preços do mercado (`horaNegociacao` + minuto atual).
  *       `ganho_perda` = quantidade × (preco_atual − preco_medio).
+ *       `lucro_realizado_total` é a soma do lucro das vendas já executadas.
  *     security:
  *       - bearerAuth: []
  *     responses:

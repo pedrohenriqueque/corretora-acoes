@@ -12,11 +12,12 @@ const OrdemModel = {
     status,
     hora_lancamento,
     hora_execucao,
-    connection = null
+    connection = null,
+    lucro_realizado = null
   ) => {
     const executor = connection || db;
     const query =
-      'INSERT INTO ordens (id_usuario, cod_acao, preco_ordem, preco_execucao, tipo_transacao, tipo_ordem, quantidade, status, hora_lancamento, hora_execucao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      'INSERT INTO ordens (id_usuario, cod_acao, preco_ordem, preco_execucao, tipo_transacao, tipo_ordem, quantidade, status, hora_lancamento, hora_execucao, lucro_realizado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     const [result] = await executor.execute(query, [
       id_usuario,
       cod_acao,
@@ -28,6 +29,7 @@ const OrdemModel = {
       status,
       hora_lancamento,
       hora_execucao,
+      lucro_realizado,
     ]);
     return result.insertId;
   },
@@ -37,7 +39,8 @@ const OrdemModel = {
     status,
     hora_execucao,
     preco_execucao = null,
-    connection = null
+    connection = null,
+    lucro_realizado = undefined
   ) => {
     const executor = connection || db;
     if (!hora_execucao) {
@@ -50,6 +53,11 @@ const OrdemModel = {
     if (preco_execucao !== null && preco_execucao !== undefined) {
       campos.push('preco_execucao = ?');
       valores.push(preco_execucao);
+    }
+
+    if (lucro_realizado !== undefined) {
+      campos.push('lucro_realizado = ?');
+      valores.push(lucro_realizado);
     }
 
     valores.push(id_ordem);
@@ -70,6 +78,19 @@ const OrdemModel = {
     const query = 'SELECT * FROM ordens WHERE id_usuario = ? ORDER BY id_ordem DESC';
     const [rows] = await db.execute(query, [id_usuario]);
     return rows;
+  },
+
+  somarLucroRealizadoUsuario: async (id_usuario, connection = null) => {
+    const executor = connection || db;
+    const query = `
+      SELECT COALESCE(SUM(lucro_realizado), 0) AS lucro_realizado_total
+      FROM ordens
+      WHERE id_usuario = ?
+        AND tipo_transacao = 'VENDA'
+        AND status = 'EXECUTADA'
+    `;
+    const [rows] = await executor.execute(query, [id_usuario]);
+    return Number(rows[0]?.lucro_realizado_total ?? 0);
   },
 
   buscarOrdemPendenteUsuario: async (id_ordem, id_usuario) => {

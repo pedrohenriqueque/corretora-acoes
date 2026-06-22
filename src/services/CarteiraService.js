@@ -1,5 +1,6 @@
 const CarteiraModel = require('../models/CarteiraModel');
 const CarteiraAcaoModel = require('../models/CarteiraAcaoModel');
+const OrdemModel = require('../models/OrdemModel');
 const MercadoService = require('./MercadoService');
 const { calcularPrecoMedio } = require('../utils/ordemValidators');
 
@@ -7,9 +8,10 @@ const CarteiraService = {
   obterCarteiraComPrecos: async (id_usuario, minutoSistema) => {
     const id_carteira = await CarteiraModel.buscarIdPorUsuario(id_usuario);
     const posicoes = await CarteiraAcaoModel.listarPosicoes(id_carteira);
+    const lucroRealizadoTotal = await OrdemModel.somarLucroRealizadoUsuario(id_usuario);
 
     if (!posicoes.length) {
-      return { acoes: [], ganhos_perdas_total: 0 };
+      return { acoes: [], ganhos_perdas_total: 0, lucro_realizado_total: lucroRealizadoTotal };
     }
 
     const precosFechamento = await MercadoService.obterPrecosFechamento();
@@ -43,6 +45,7 @@ const CarteiraService = {
     return {
       acoes,
       ganhos_perdas_total: Number(ganhosPerdasTotal.toFixed(2)),
+      lucro_realizado_total: lucroRealizadoTotal,
     };
   },
 

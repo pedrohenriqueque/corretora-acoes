@@ -9,10 +9,6 @@ const TempoSistemaModel = require('../models/TempoSistemaModel');
 let minutoSistemaGlobal = null;
 
 const garantirMinutoCarregado = async () => {
-  if (minutoSistemaGlobal !== null) {
-    return minutoSistemaGlobal;
-  }
-
   const minutoPersistido = await TempoSistemaModel.obterMinuto();
   if (minutoPersistido === null || Number.isNaN(minutoPersistido)) {
     minutoSistemaGlobal = 0;
@@ -111,6 +107,35 @@ const mercadoController = {
     } catch (error) {
       console.error(error);
       return res.status(500).json({ error: 'Erro ao buscar o tempo.' });
+    }
+  },
+
+  resetaTempo: async (req, res) => {
+    try {
+      await mercadoController.resetMinutoSistema();
+      await garantirMinutoCarregado();
+
+      const id_usuario = req.usuarioId;
+      const [linhasFavoritas] = await db.execute(
+        'SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?',
+        [id_usuario]
+      );
+      const minhasAcoes = linhasFavoritas.map((linha) => linha.cod_acao);
+
+      const precosFechamento = await MercadoService.obterPrecosFechamento();
+      const precosMinuto = await MercadoService.obterPrecosMinuto(minutoSistemaGlobal);
+      const mercadoCompleto = MercadoService.mapearPrecosComVariacao(precosMinuto, precosFechamento);
+      const acoesResposta = mercadoCompleto.filter((acao) => minhasAcoes.includes(acao.codigo));
+      const horaNegociacao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
+
+      return res.status(200).json({
+        message: 'Horário do sistema resetado para 14:00.',
+        horaNegociacao,
+        acoes: acoesResposta,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Erro ao resetar o tempo do sistema.' });
     }
   },
 

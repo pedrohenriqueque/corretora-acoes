@@ -4,6 +4,7 @@ const mercadoController = require('../controllers/MercadoController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/AvancaTempo', authMiddleware, mercadoController.avancaTempo);
+router.post('/ResetaTempo', authMiddleware, mercadoController.resetaTempo);
 router.get('/PegaTempo', authMiddleware, mercadoController.pegaTempo);
 router.get('/ListaAcoesInteresse', authMiddleware, mercadoController.listaAcoesInteresse);
 router.post('/AdicionaAcaoInteresse', authMiddleware, mercadoController.adicionaAcaoInteresse);

@@ -8,7 +8,7 @@ const CarteiraController = {
       const minutoAtual = await MercadoController.obterMinutosAtuais();
       const horaNegociacao = `14:${minutoAtual.toString().padStart(2, '0')}`;
 
-      const { acoes, ganhos_perdas_total } = await CarteiraService.obterCarteiraComPrecos(
+      const { acoes, ganhos_perdas_total, lucro_realizado_total } = await CarteiraService.obterCarteiraComPrecos(
         idUsuario,
         minutoAtual
       );
@@ -16,6 +16,7 @@ const CarteiraController = {
       return res.json({
         horaNegociacao,
         ganhos_perdas_total,
+        lucro_realizado_total,
         acoes,
       });
     } catch (error) {

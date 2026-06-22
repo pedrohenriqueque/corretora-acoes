@@ -214,6 +214,9 @@
  *           type: number
  *         valor_total:
  *           type: number
+ *         lucro_realizado:
+ *           type: number
+ *           nullable: true
  *         quantidade:
  *           type: integer
  *         tipo_ordem:
@@ -299,6 +302,8 @@
  *         horaNegociacao:
  *           type: string
  *         ganhos_perdas_total:
+ *           type: number
+ *         lucro_realizado_total:
  *           type: number
  *         acoes:
  *           type: array

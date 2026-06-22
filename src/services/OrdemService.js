@@ -202,6 +202,15 @@ const OrdemService = {
       await connection.beginTransaction();
 
       let idOrdem = idOrdemExistente;
+      const idCarteira = await CarteiraModel.buscarIdPorUsuario(idUsuario, connection);
+      const posicaoAtual = await CarteiraAcaoModel.buscarPosicao(idCarteira, codigo, connection);
+
+      if (!posicaoAtual || Number(posicaoAtual.quantidade) < qtd) {
+        throw new QuantidadeInsuficienteError();
+      }
+
+      const precoMedioCompra = Number(posicaoAtual.preco_medio);
+      const lucroRealizado = Number(((preco - precoMedioCompra) * qtd).toFixed(2));
 
       if (!idOrdem) {
         const precoOrdemFinal = precoOrdem ?? preco;
@@ -216,10 +225,18 @@ const OrdemService = {
           'EXECUTADA',
           horaLancamento,
           horaExecucao,
-          connection
+          connection,
+          lucroRealizado
         );
       } else {
-        await OrdemModel.atualizarStatusOrdem(idOrdem, 'EXECUTADA', horaExecucao, preco, connection);
+        await OrdemModel.atualizarStatusOrdem(
+          idOrdem,
+          'EXECUTADA',
+          horaExecucao,
+          preco,
+          connection,
+          lucroRealizado
+        );
       }
 
       await ContaCorrenteService.registrarDeposito(
@@ -245,6 +262,7 @@ const OrdemService = {
         preco_ordem: precoOrdem ?? preco,
         preco_execucao: preco,
         valor_total: valorTotal,
+        lucro_realizado: lucroRealizado,
         quantidade: qtd,
         tipo_ordem: tipoOrdem,
         status: 'EXECUTADA',
