@@ -64,7 +64,6 @@ const mercadoController = {
           // Coleta os preços e faz o mapeamento usando o Service
           const precosMinuto = await MercadoService.obterPrecosMinuto(minutoSistemaGlobal);
 
-
           const dadosMercado = MercadoService.mapearPrecosComVariacao(precosMinuto, precosFechamento);
 
           if (i === incrementoReal || minutoSistemaGlobal === 59) {
@@ -74,7 +73,6 @@ const mercadoController = {
           const horaExecucao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
           await OrdemService.processarOrdensPendentes(precosMinuto, horaExecucao);
 
-
         } catch (error) {
           console.error(`Erro ao processar preços no minuto ${minutoSistemaGlobal}:`, error);
           if (i === incrementoReal) dadosMercadoFinais = [];
@@ -83,8 +81,23 @@ const mercadoController = {
 
       await TempoSistemaModel.salvarMinuto(minutoSistemaGlobal);
 
+      // --- CORREÇÃO: Filtrar os ativos para retornar apenas os de interesse do usuário ---
+      const id_usuario = req.usuarioId;
+      const [linhasFavoritas] = await db.execute(
+        'SELECT cod_acao FROM acoes_favoritadas WHERE user_id = ?', 
+        [id_usuario]
+      );
+      const minhasAcoes = linhasFavoritas.map(linha => linha.cod_acao);
+
+      // Aplica o filtro na lista final gerada pelo mapeamento do Service
+      const dadosMercadoFiltrados = dadosMercadoFinais.filter(m => 
+        minhasAcoes.includes(m.codigo)
+      );
+
       const novaHoraNegociacao = `14:${minutoSistemaGlobal.toString().padStart(2, '0')}`;
-      const resposta = { novaHoraNegociacao, acoes: dadosMercadoFinais };
+      
+      // Enviamos 'dadosMercadoFiltrados' no lugar do array bruto da bolsa inteira
+      const resposta = { novaHoraNegociacao, acoes: dadosMercadoFiltrados };
       if (aviso) {
         resposta.aviso = aviso;
       }
@@ -95,6 +108,7 @@ const mercadoController = {
       return res.status(500).json({ error: 'Erro interno ao avançar o tempo.' });
     }
   },
+       
 
   // ========================================================
   // 2. GET PegaTempo
